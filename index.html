@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>معالج الخطوط العربية الاحترافي</title>
+    <script src="https://cdn.jsdelivr.net/npm/opentype.js@latest/dist/opentype.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(120, 50, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255, 50, 120, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(50, 200, 255, 0.1) 0%, transparent 50%);
+            animation: moveGradient 15s ease infinite;
+            pointer-events: none;
+        }
+
+        @keyframes moveGradient {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(5%, 5%) rotate(120deg); }
+            66% { transform: translate(-5%, 5%) rotate(240deg); }
+        }
+
+        .container {
+            background: rgba(20, 20, 20, 0.7);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 
+                0 8px 32px 0 rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+            padding: 50px;
+            max-width: 900px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        h1 {
+            text-align: center;
+            color: #fff;
+            font-size: 2.5em;
+            margin-bottom: 15px;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+            background: linear-gradient(135deg, #fff, #a8a8a8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .main-button {
+            width: 100%;
+            padding: 20px;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(135deg, rgba(120, 50, 255, 0.8), rgba(255, 50, 120, 0.8));
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 25px rgba(120, 50, 255, 0.3);
+            margin-bottom: 30px;
+        }
+
+        .main-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(120, 50, 255, 0.5);
+        }
+
+        .main-button:active {
+            transform: translateY(-1px);
+        }
+
+        .upload-section {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .upload-box {
+            background: rgba(30, 30, 30, 0.6);
+            backdrop-filter: blur(15px);
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            padding: 50px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 30px;
+        }
+
+        .upload-box:hover {
+            border-color: rgba(120, 50, 255, 0.8);
+            background: rgba(40, 40, 40, 0.6);
+        }
+
+        .upload-box.dragover {
+            border-color: rgba(255, 50, 120, 0.8);
+            background: rgba(50, 30, 60, 0.6);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .upload-text {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.9em;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .options-grid {
+            display: none;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .option-card {
+            background: rgba(40, 40, 40, 0.6);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .option-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(120, 50, 255, 0.2), rgba(255, 50, 120, 0.2));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .option-card:hover::before {
+            opacity: 1;
+        }
+
+        .option-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(120, 50, 255, 0.6);
+            box-shadow: 0 10px 30px rgba(120, 50, 255, 0.3);
+        }
+
+        .option-card.active {
+            border-color: rgba(50, 255, 120, 0.8);
+            box-shadow: 0 0 20px rgba(50, 255, 120, 0.3);
+        }
+
+        .option-icon {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .option-title {
+            color: #fff;
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .option-desc {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.85em;
+            position: relative;
+            z-index: 1;
+        }
+
+        .check-mark {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 25px;
+            height: 25px;
+            background: rgba(50, 255, 120, 0.9);
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+            font-weight: bold;
+            z-index: 2;
+            animation: popIn 0.3s ease;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .option-card.active .check-mark {
+            display: flex;
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loader.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid rgba(120, 50, 255, 0.8);
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loader-text {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, rgba(120, 50, 255, 0.8), rgba(255, 50, 120, 0.8));
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(120, 50, 255, 0.6);
+        }
+
+        .download-section {
+            display: none;
+            text-align: center;
+            padding: 30px;
+            background: rgba(30, 60, 30, 0.3);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            border: 1px solid rgba(50, 255, 120, 0.3);
+            animation: fadeIn 0.5s ease;
+        }
+
+        .download-section.active {
+            display: block;
+        }
+
+        .success-icon {
+            font-size: 4em;
+            color: rgba(50, 255, 120, 0.9);
+            margin-bottom: 20px;
+            animation: popIn 0.5s ease;
+        }
+
+        .download-button {
+            padding: 15px 40px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #000;
+            background: linear-gradient(135deg, rgba(50, 255, 120, 0.9), rgba(50, 200, 255, 0.9));
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+            box-shadow: 0 5px 20px rgba(50, 255, 120, 0.3);
+        }
+
+        .download-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(50, 255, 120, 0.5);
+        }
+
+        .reset-button {
+            background: linear-gradient(135deg, rgba(255, 50, 120, 0.8), rgba(255, 120, 50, 0.8));
+            color: #fff;
+        }
+
+        .font-preview {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .preview-text {
+            font-size: 3em;
+            color: #fff;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .file-name {
+            color: rgba(50, 255, 120, 0.9);
+            font-weight: bold;
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(50, 255, 120, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(50, 255, 120, 0.3);
+        }
+
+        .back-button {
+            padding: 12px 30px;
+            font-size: 1em;
+            color: rgba(255, 255, 255, 0.8);
+            background: rgba(60, 60, 60, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .back-button:hover {
+            background: rgba(80, 80, 80, 0.6);
+            transform: translateX(-5px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ معالج الخطوط العربية الاحترافي</h1>
+        <p class="subtitle">حول خطوطك العربية إلى تحف فنية بنقرة واحدة</p>
+
+        <!-- الزر الرئيسي -->
+        <button class="main-button" id="mainBtn" onclick="showUpload()">
+            🎨 تلاعب بخط
+        </button>
+
+        <!-- قسم رفع الخط -->
+        <div class="upload-section" id="uploadSection">
+            <button class="back-button" onclick="resetAll()">← رجوع</button>
+            
+            <div class="upload-box" id="uploadBox" onclick="document.getElementById('fontFile').click()">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">اضغط هنا أو اسحب ملف الخط</div>
+                <div class="upload-subtext">يدعم: TTF, OTF, WOFF, WOFF2</div>
+            </div>
+            <input type="file" id="fontFile" accept=".ttf,.otf,.woff,.woff2" onchange="handleFileUpload(event)">
+            
+            <div id="fileName" class="file-name" style="display: none;"></div>
+
+            <!-- خيارات المعالجة -->
+            <div class="options-grid" id="optionsGrid">
+                <div class="option-card" onclick="selectOption(this, 'embroidery')">
+                    <div class="check-mark">✓</div>
+                    <div class="option-icon">🧵</div>
+                    <div class="option-title">تطريز الخط</div>
+                    <div class="option-desc">إضافة خطوط تطريز جميلة داخل الحروف</div>
+                </div>
+
+                <div class="option-card" onclick="selectOption(this, 'outline')">
+                    <div class="check-mark">✓</div>
+                    <div class="option-icon">⭕</div>
+                    <div class="option-title">تفريغ الخط</div>
+                    <div class="option-desc">إبقاء الحواف فقط وتفريغ الداخل</div>
+                </div>
+
+                <div class="option-card" onclick="selectOption(this, 'dots')">
+                    <div class="check-mark">✓</div>
+                    <div class="option-icon">⚫</div>
+                    <div class="option-title">نقاط احترافية</div>
+                    <div class="option-desc">إضافة نقاط زخرفية على الحروف</div>
+                </div>
+
+                <div class="option-card" onclick="selectOption(this, 'shadow')">
+                    <div class="check-mark">✓</div>
+                    <div class="option-icon">🌓</div>
+                    <div class="option-title">ظل ثلاثي الأبعاد</div>
+                    <div class="option-desc">إضافة ظل 3D للحروف</div>
+                </div>
+
+                <div class="option-card" onclick="selectOption(this, 'gradient')">
+                    <div class="check-mark">✓</div>
+                    <div class="option-icon">🌈</div>
+                    <div class="option-title">تدرج لوني</div>
+                    <div class="option-desc">إضافة تدرج ألوان داخل الحروف</div>
+                </div>
+
+                <div class="option-card" onclick="selectOption(this, 'ornament')">
+                    <div class="check-mark">✓</div>
+                    <div class="option-icon">✨</div>
+                    <div class="option-title">زخرفة إسلامية</div>
+                    <div class="option-desc">إضافة زخارف عربية تراثية</div>
+                </div>
+
+                <div class="option-card" onclick="selectOption(this, 'bold')">
+                    <div class="check-mark">✓</div>
+                    <div class="option-icon">💪</div>
+                    <div class="option-title">تعريض احترافي</div>
+                    <div class="option-desc">زيادة سمك الخط بشكل متناسق</div>
+                </div>
+
+                <div class="option-card" onclick="selectOption(this, 'artistic')">
+                    <div class="check-mark">✓</div>
+                    <div class="option-icon">🎭</div>
+                    <div class="option-title">لمسة فنية</div>
+                    <div class="option-desc">تأثيرات فنية إبداعية</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- شاشة التحميل -->
+        <div class="loader" id="loader">
+            <div class="spinner"></div>
+            <div class="loader-text" id="loaderText">جاري معالجة الخط...</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <!-- قسم التحميل -->
+        <div class="download-section" id="downloadSection">
+            <div class="success-icon">✅</div>
+            <h2 style="color: #fff; margin-bottom: 15px;">تمت المعالجة بنجاح!</h2>
+            <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 25px;">
+                خطك الجديد جاهز للتحميل
+            </p>
+            
+            <div class="font-preview" id="fontPreview">
+                <div class="preview-text" id="previewText">مرحباً بك في عالم الخطوط العربية</div>
+            </div>
+
+            <button class="download-button" onclick="downloadFont()">
+                ⬇️ تحميل الخط المعالج
+            </button>
+            <button class="download-button reset-button" onclick="resetAll()">
+                🔄 معالجة خط آخر
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // إعداد Supabase (ضع بياناتك هنا)
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+        
+        let supabase;
+        if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        }
+
+        let currentFont = null;
+        let selectedOptions = [];
+        let processedFontData = null;
+
+        // إظهار قسم رفع الخط
+        function showUpload() {
+            document.getElementById('mainBtn').style.display = 'none';
+            document.getElementById('uploadSection').style.display = 'block';
+        }
+
+        // معالجة رفع الملف
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const fileName = file.name;
+            document.getElementById('fileName').textContent = `📎 تم اختيار: ${fileName}`;
+            document.getElementById('fileName').style.display = 'block';
+
+            // قراءة الخط
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    currentFont = opentype.parse(e.target.result);
+                    document.getElementById('optionsGrid').style.display = 'grid';
+                    
+                    // رفع الخط إلى Supabase
+                    if (supabase) {
+                        uploadToSupabase(file);
+                    }
+                } catch (error) {
+                    alert('❌ خطأ في قراءة الخط. تأكد من أن الملف صحيح.');
+                    console.error(error);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // رفع إلى Supabase
+        async function uploadToSupabase(file) {
+            try {
+                const fileName = `fonts/${Date.now()}_${file.name}`;
+                const { data, error } = await supabase.storage
+                    .from('fonts')
+                    .upload(fileName, file);
+                
+                if (error) throw error;
+                console.log('تم رفع الخط إلى Supabase:', data);
+            } catch (error) {
+                console.error('خطأ في رفع الخط:', error);
+            }
+        }
+
+        // اختيار خيار
+        function selectOption(card, option) {
+            card.classList.toggle('active');
+            
+            const index = selectedOptions.indexOf(option);
+            if (index > -1) {
+                selectedOptions.splice(index, 1);
+            } else {
+                selectedOptions.push(option);
+            }
+
+            // إذا تم اختيار خيار واحد على الأقل، ابدأ المعالجة
+            if (selectedOptions.length > 0) {
+                setTimeout(() => processFont(), 500);
+            }
+        }
+
+        // معالجة الخط
+        function processFont() {
+            if (!currentFont || selectedOptions.length === 0) return;
+
+            // إخفاء الخيارات وإظهار شاشة التحميل
+            document.getElementById('optionsGrid').style.display = 'none';
+            document.getElementById('loader').classList.add('active');
+
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 95) progress = 95;
+                document.getElementById('progressFill').style.width = progress + '%';
+            }, 200);
+
+            // محاكاة معالجة الخط
+            setTimeout(() => {
+                clearInterval(progressInterval);
+                document.getElementById('progressFill').style.width = '100%';
+                
+                // إنشاء نسخة معدلة من الخط
+                processedFontData = createModifiedFont();
+                
+                setTimeout(() => {
+                    document.getElementById('loader').classList.remove('active');
+                    document.getElementById('downloadSection').classList.add('active');
+                    
+                    // تطبيق الخط على المعاينة
+                    applyFontPreview();
+                }, 500);
+            }, 2500);
+        }
+
+        // إنشاء خط معدل
+        function createModifiedFont() {
+            try {
+                const newFont = new opentype.Font({
+                    familyName: currentFont.names.fontFamily.en + '_Modified',
+                    styleName: 'Regular',
+                    unitsPerEm: currentFont.unitsPerEm,
+                    ascender: currentFont.ascender,
+                    descender: currentFont.descender,
+                    glyphs: []
+                });
+
+                // معالجة كل حرف
+                currentFont.glyphs.forEach((glyph, index) => {
+                    if (glyph.path) {
+                        let modifiedPath = glyph.path;
+                        
+                        // تطبيق التعديلات حسب الخيارات المختارة
+                        selectedOptions.forEach(option => {
+                            modifiedPath = applyEffect(modifiedPath, option, glyph);
+                        });
+
+                        const newGlyph = new opentype.Glyph({
+                            name: glyph.name,
+                            unicode: glyph.unicode,
+                            index: index,
+                            advanceWidth: glyph.advanceWidth,
+                            path: modifiedPath
+                        });
+                        
+                        newFont.glyphs.push(newGlyph);
+                    }
+                });
+
+                return newFont.toArrayBuffer();
+            } catch (error) {
+                console.error('خطأ في إنشاء الخط:', error);
+                return null;
+            }
+        }
+
+        // تطبيق التأثيرات
+        function applyEffect(path, effect, glyph) {
+            const newPath = new opentype.Path();
+            
+            switch(effect) {
+                case 'embroidery':
+                    // تطريز: إضافة خطوط داخلية
+                    newPath.commands = path.commands.slice();
+                    const innerPath = createInnerPath(path, -30);
+                    newPath.commands = newPath.commands.concat(innerPath.commands);
+                    break;
+                    
+                case 'outline':
+                    // تفريغ: إنشاء إطار خارجي فقط
+                    const outerPath = createOuterPath(path, 20);
+                    const innerPath2 = createInnerPath(path, -20);
+                    newPath.commands = outerPath.commands.concat(innerPath2.commands);
+                    break;
+                    
+                case 'dots':
+                    // نقاط: إضافة دوائر صغيرة
+                    newPath.commands = path.commands.slice();
+                    addDotsToPath(newPath, glyph);
+                    break;
+                    
+                case 'shadow':
+                    // ظل 3D
+                    const shadowPath = createShadowPath(path, 15, 15);
+                    newPath.commands = shadowPath.commands.concat(path.commands);
+                    break;
+                    
+                case 'bold':
+                    // تعريض
+                    return createOuterPath(path, 40);
+                    
+                default:
+                    return path;
+            }
+            
+            return newPath.commands.length > 0 ? newPath : path;
+        }
+
+        // دوال مساعدة للتأثيرات
+        function createInnerPath(path, offset) {
+            const newPath = new opentype.Path();
+            // تقليص المسار للداخل
+            path.commands.forEach(cmd => {
+                if (cmd.type === 'M' || cmd.type === 'L') {
+                    newPath.commands.push({
+                        type: cmd.type,
+                        x: cmd.x + offset,
+                        y: cmd.y + offset
+                    });
+                } else {
+                    newPath.commands.push({...cmd});
+                }
+            });
+            return newPath;
+        }
+
+        function createOuterPath(path, offset) {
+            const newPath = new opentype.Path();
+            // توسيع المسار للخارج
+            path.commands.forEach(cmd => {
+                if (cmd.type === 'M' || cmd.type === 'L') {
+                    newPath.commands.push({
+                        type: cmd.type,
+                        x: cmd.x - offset,
+                        y: cmd.y - offset
+                    });
+                } else {
+                    newPath.commands.push({...cmd});
+                }
+            });
+            return newPath;
+        }
+
+        function createShadowPath(path, offsetX, offsetY) {
+            const newPath = new opentype.Path();
+            path.commands.forEach(cmd => {
+                const newCmd = {...cmd};
+                if (cmd.x !== undefined) newCmd.x = cmd.x + offsetX;
+                if (cmd.y !== undefined) newCmd.y = cmd.y + offsetY;
+                newPath.commands.push(newCmd);
+            });
+            return newPath;
+        }
+
+        function addDotsToPath(path, glyph) {
+            // إضافة نقاط زخرفية في نقاط رئيسية
+            const dotSize = 30;
+            const positions = [[100, 100], [200, 200], [300, 100]];
+            
+            positions.forEach(([x, y]) => {
+                // إضافة دائرة صغيرة
+                for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 6) {
+                    const px = x + Math.cos(angle) * dotSize;
+                    const py = y + Math.sin(angle) * dotSize;
+                    path.commands.push({type: angle === 0 ? 'M' : 'L', x: px, y: py});
+                }
+                path.commands.push({type: 'Z'});
+            });
+        }
+
+        // تطبيق الخط على المعاينة
+        function applyFontPreview() {
+            const previewText = document.getElementById('previewText');
+            const effectsText = selectedOptions.map(opt => {
+                const names = {
+                    embroidery: 'مطرز',
+                    outline: 'مفرغ',
+                    dots: 'منقط',
+                    shadow: 'مظلل',
+                    gradient: 'متدرج',
+                    ornament: 'مزخرف',
+                    bold: 'عريض',
+                    artistic: 'فني'
+                };
+                return names[opt];
+            }).join(' + ');
+            
+            previewText.textContent = `خط عربي ${effectsText}`;
+            previewText.style.textShadow = selectedOptions.includes('shadow') ? 
+                '5px 5px 10px rgba(255, 255, 255, 0.3)' : 'none';
+            previewText.style.fontWeight = selectedOptions.includes('bold') ? 
+                'bold' : 'normal';
+        }
+
+        // تحميل الخط
+        function downloadFont() {
+            if (!processedFontData) {
+                alert('لم يتم معالجة الخط بعد!');
+                return;
+            }
+
+            const effectsName = selectedOptions.join('_');
+            const fileName = `${currentFont.names.fontFamily.en}_${effectsName}.ttf`;
+            
+            const blob = new Blob([processedFontData], { type: 'font/ttf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            // حفظ في Supabase
+            if (supabase) {
+                saveProcessedFont(fileName, blob);
+            }
+        }
+
+        // حفظ الخط المعالج في Supabase
+        async function saveProcessedFont(fileName, blob) {
+            try {
+                const { data, error } = await supabase.storage
+                    .from('processed-fonts')
+                    .upload(`processed/${Date.now()}_${fileName}`, blob);
+                
+                if (error) throw error;
+                console.log('تم حفظ الخط المعالج:', data);
+            } catch (error) {
+                console.error('خطأ في حفظ الخط:', error);
+            }
+        }
+
+        // إعادة تعيين كل شيء
+        function resetAll() {
+            document.getElementById('mainBtn').style.display = 'block';
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('optionsGrid').style.display = 'none';
+            document.getElementById('downloadSection').classList.remove('active');
+            document.getElementById('fileName').style.display = 'none';
+            document.getElementById('fontFile').value = '';
+            
+            document.querySelectorAll('.option-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            
+            currentFont = null;
+            selectedOptions = [];
+            processedFontData = null;
+        }
+
+        // السحب والإفلات
+        const uploadBox = document.getElementById('uploadBox');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadBox.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadBox.addEventListener(eventName, () => {
+                uploadBox.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadBox.addEventListener(eventName, () => {
+                uploadBox.classList.remove('dragover');
+            }, false);
+        });
+
+        uploadBox.addEventListener('drop', function(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            document.getElementById('fontFile').files = files;
+            handleFileUpload({target: {files: files}});
+        }, false);
+    </script>
+</body>
+</html>
