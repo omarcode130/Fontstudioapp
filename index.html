@@ -110,6 +110,10 @@
             animation: fadeIn 0.5s ease;
         }
 
+        .upload-section.show {
+            display: block;
+        }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
@@ -172,6 +176,10 @@
             gap: 20px;
             margin-top: 30px;
             animation: fadeIn 0.5s ease;
+        }
+
+        .options-grid.show {
+            display: grid;
         }
 
         .option-card {
@@ -273,7 +281,7 @@
             padding: 50px;
         }
 
-        .loader.active {
+        .loader.show {
             display: block;
             animation: fadeIn 0.3s ease;
         }
@@ -331,7 +339,7 @@
             animation: fadeIn 0.5s ease;
         }
 
-        .download-section.active {
+        .download-section.show {
             display: block;
         }
 
@@ -397,6 +405,11 @@
             border-radius: 12px;
             border: 2px solid rgba(50, 255, 120, 0.4);
             font-size: 1.1em;
+            display: none;
+        }
+
+        .file-name.show {
+            display: block;
         }
 
         .back-button {
@@ -435,10 +448,6 @@
                 font-size: 1.8em;
             }
         }
-
-        .hidden {
-            display: none !important;
-        }
     </style>
 </head>
 <body>
@@ -462,7 +471,7 @@
             </div>
             <input type="file" id="fontFile" accept=".ttf,.otf,.woff,.woff2">
             
-            <div id="fileName" class="file-name hidden"></div>
+            <div id="fileName" class="file-name"></div>
 
             <!-- خيارات المعالجة -->
             <div class="options-grid" id="optionsGrid">
@@ -556,275 +565,253 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
     <script>
-        // المتغيرات العامة
-        let currentFont = null;
-        let currentFontFile = null;
-        let selectedOptions = [];
-        let processedFontBlob = null;
+        // 🔥 انتظار تحميل الصفحة بالكامل
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ تم تحميل الصفحة بنجاح!');
+            
+            // المتغيرات العامة
+            let currentFont = null;
+            let currentFontFile = null;
+            let selectedOptions = [];
+            let processedFontBlob = null;
 
-        // العناصر
-        const mainBtn = document.getElementById('mainBtn');
-        const uploadSection = document.getElementById('uploadSection');
-        const uploadBox = document.getElementById('uploadBox');
-        const fontFile = document.getElementById('fontFile');
-        const fileName = document.getElementById('fileName');
-        const optionsGrid = document.getElementById('optionsGrid');
-        const loader = document.getElementById('loader');
-        const loaderText = document.getElementById('loaderText');
-        const progressFill = document.getElementById('progressFill');
-        const downloadSection = document.getElementById('downloadSection');
-        const previewText = document.getElementById('previewText');
-        const backBtn = document.getElementById('backBtn');
-        const downloadBtn = document.getElementById('downloadBtn');
-        const resetBtn = document.getElementById('resetBtn');
+            // العناصر
+            const mainBtn = document.getElementById('mainBtn');
+            const uploadSection = document.getElementById('uploadSection');
+            const uploadBox = document.getElementById('uploadBox');
+            const fontFile = document.getElementById('fontFile');
+            const fileName = document.getElementById('fileName');
+            const optionsGrid = document.getElementById('optionsGrid');
+            const loader = document.getElementById('loader');
+            const loaderText = document.getElementById('loaderText');
+            const progressFill = document.getElementById('progressFill');
+            const downloadSection = document.getElementById('downloadSection');
+            const previewText = document.getElementById('previewText');
+            const backBtn = document.getElementById('backBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const resetBtn = document.getElementById('resetBtn');
 
-        // إظهار قسم رفع الخط
-        mainBtn.addEventListener('click', () => {
-            mainBtn.classList.add('hidden');
-            uploadSection.style.display = 'block';
-        });
-
-        // فتح نافذة اختيار الملف
-        uploadBox.addEventListener('click', () => {
-            fontFile.click();
-        });
-
-        // معالجة رفع الملف
-        fontFile.addEventListener('change', handleFileUpload);
-
-        function handleFileUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            currentFontFile = file;
-            fileName.textContent = `📎 تم اختيار: ${file.name}`;
-            fileName.classList.remove('hidden');
-
-            // قراءة الخط
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                try {
-                    currentFont = opentype.parse(event.target.result);
-                    optionsGrid.style.display = 'grid';
-                    
-                    // حفظ في قاعدة البيانات
-                    saveToDatabase(file);
-                } catch (error) {
-                    alert('❌ خطأ في قراءة الخط. تأكد من أن الملف صحيح.');
-                    console.error('Font parsing error:', error);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        // حفظ في قاعدة بيانات Replit
-        async function saveToDatabase(file) {
-            try {
-                const formData = new FormData();
-                formData.append('font', file);
-                formData.append('timestamp', Date.now());
-                
-                const response = await fetch('/upload-font', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                console.log('✅ تم حفظ الخط:', result);
-            } catch (error) {
-                console.error('خطأ في حفظ الخط:', error);
-            }
-        }
-
-        // اختيار خيارات المعالجة
-        const optionCards = document.querySelectorAll('.option-card');
-        optionCards.forEach(card => {
-            card.addEventListener('click', () => {
-                const option = card.dataset.option;
-                card.classList.toggle('active');
-                
-                const index = selectedOptions.indexOf(option);
-                if (index > -1) {
-                    selectedOptions.splice(index, 1);
-                } else {
-                    selectedOptions.push(option);
-                }
-
-                // بدء المعالجة إذا تم اختيار خيار واحد على الأقل
-                if (selectedOptions.length > 0) {
-                    setTimeout(() => processFont(), 800);
-                }
+            // ✅ زر "تلاعب بخط"
+            mainBtn.addEventListener('click', function() {
+                console.log('✅ تم الضغط على زر تلاعب بخط');
+                mainBtn.style.display = 'none';
+                uploadSection.classList.add('show');
             });
-        });
 
-        // معالجة الخط
-        function processFont() {
-            if (!currentFont || selectedOptions.length === 0) return;
+            // ✅ فتح نافذة اختيار الملف
+            uploadBox.addEventListener('click', function() {
+                console.log('✅ تم الضغط على صندوق الرفع');
+                fontFile.click();
+            });
 
-            // إخفاء الخيارات وإظهار شاشة التحميل
-            optionsGrid.style.display = 'none';
-            loader.classList.add('active');
-            
-            // محاكاة التقدم
-            let progress = 0;
-            const progressInterval = setInterval(() => {
-                progress += Math.random() * 12;
-                if (progress > 92) progress = 92;
-                progressFill.style.width = progress + '%';
+            // ✅ معالجة رفع الملف
+            fontFile.addEventListener('change', function(e) {
+                console.log('✅ تم اختيار ملف');
+                const file = e.target.files[0];
+                if (!file) return;
+
+                currentFontFile = file;
+                fileName.textContent = `📎 تم اختيار: ${file.name}`;
+                fileName.classList.add('show');
+
+                // قراءة الخط
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        currentFont = opentype.parse(event.target.result);
+                        console.log('✅ تم تحميل الخط بنجاح');
+                        optionsGrid.classList.add('show');
+                    } catch (error) {
+                        alert('❌ خطأ في قراءة الخط. تأكد من أن الملف صحيح.');
+                        console.error('خطأ:', error);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+
+            // ✅ اختيار خيارات المعالجة
+            const optionCards = document.querySelectorAll('.option-card');
+            optionCards.forEach(function(card) {
+                card.addEventListener('click', function() {
+                    console.log('✅ تم اختيار خيار');
+                    const option = card.getAttribute('data-option');
+                    card.classList.toggle('active');
+                    
+                    const index = selectedOptions.indexOf(option);
+                    if (index > -1) {
+                        selectedOptions.splice(index, 1);
+                    } else {
+                        selectedOptions.push(option);
+                    }
+
+                    console.log('الخيارات المختارة:', selectedOptions);
+
+                    // بدء المعالجة إذا تم اختيار خيار واحد على الأقل
+                    if (selectedOptions.length > 0) {
+                        setTimeout(function() {
+                            processFont();
+                        }, 800);
+                    }
+                });
+            });
+
+            // ✅ معالجة الخط
+            function processFont() {
+                if (!currentFont || selectedOptions.length === 0) return;
+
+                console.log('✅ بدء معالجة الخط...');
+
+                // إخفاء الخيارات وإظهار شاشة التحميل
+                optionsGrid.classList.remove('show');
+                loader.classList.add('show');
                 
-                // تغيير النص
-                if (progress > 30 && progress < 60) {
-                    loaderText.textContent = 'جاري تطبيق التأثيرات... 🎨';
-                } else if (progress > 60) {
-                    loaderText.textContent = 'جاري التشطيب النهائي... ✨';
+                // محاكاة التقدم
+                let progress = 0;
+                const progressInterval = setInterval(function() {
+                    progress += Math.random() * 12;
+                    if (progress > 92) progress = 92;
+                    progressFill.style.width = progress + '%';
+                    
+                    // تغيير النص
+                    if (progress > 30 && progress < 60) {
+                        loaderText.textContent = 'جاري تطبيق التأثيرات... 🎨';
+                    } else if (progress > 60) {
+                        loaderText.textContent = 'جاري التشطيب النهائي... ✨';
+                    }
+                }, 180);
+
+                // المعالجة الفعلية
+                setTimeout(function() {
+                    clearInterval(progressInterval);
+                    progressFill.style.width = '100%';
+                    loaderText.textContent = 'اكتمل! 🎉';
+                    
+                    // إنشاء الخط المعدل
+                    createModifiedFont();
+                    
+                    setTimeout(function() {
+                        loader.classList.remove('show');
+                        downloadSection.classList.add('show');
+                        updatePreview();
+                    }, 600);
+                }, 3000);
+            }
+
+            // ✅ إنشاء خط معدل
+            function createModifiedFont() {
+                console.log('✅ إنشاء الخط المعدل...');
+                // مؤقتاً نستخدم الملف الأصلي
+                processedFontBlob = currentFontFile;
+            }
+
+            // ✅ تحديث المعاينة
+            function updatePreview() {
+                const effectsNames = {
+                    embroidery: 'مطرز',
+                    outline: 'مفرغ',
+                    dots: 'منقط',
+                    shadow: 'مظلل',
+                    gradient: 'متدرج',
+                    ornament: 'مزخرف',
+                    bold: 'عريض',
+                    artistic: 'فني'
+                };
+                
+                const effects = selectedOptions.map(function(opt) {
+                    return effectsNames[opt];
+                }).join(' + ');
+                
+                previewText.textContent = `خط عربي ${effects} ✨`;
+                
+                // تطبيق تأثيرات CSS
+                if (selectedOptions.indexOf('shadow') > -1) {
+                    previewText.style.textShadow = '6px 6px 12px rgba(255, 255, 255, 0.4)';
                 }
-            }, 180);
-
-            // المعالجة الفعلية
-            setTimeout(() => {
-                clearInterval(progressInterval);
-                progressFill.style.width = '100%';
-                loaderText.textContent = 'اكتمل! 🎉';
-                
-                // إنشاء الخط المعدل
-                createModifiedFont();
-                
-                setTimeout(() => {
-                    loader.classList.remove('active');
-                    downloadSection.classList.add('active');
-                    updatePreview();
-                }, 600);
-            }, 3000);
-        }
-
-        // إنشاء خط معدل (محاكاة)
-        function createModifiedFont() {
-            // في الواقع، معالجة الخط معقدة وتحتاج مكتبات متقدمة
-            // هنا نحاكي إنشاء خط جديد
-            processedFontBlob = currentFontFile; // مؤقتاً نستخدم الملف الأصلي
-            
-            // في التطبيق الحقيقي، يتم تعديل الـ glyphs هنا
-        }
-
-        // تحديث المعاينة
-        function updatePreview() {
-            const effectsNames = {
-                embroidery: 'مطرز',
-                outline: 'مفرغ',
-                dots: 'منقط',
-                shadow: 'مظلل',
-                gradient: 'متدرج',
-                ornament: 'مزخرف',
-                bold: 'عريض',
-                artistic: 'فني'
-            };
-            
-            const effects = selectedOptions.map(opt => effectsNames[opt]).join(' + ');
-            previewText.textContent = `خط عربي ${effects} ✨`;
-            
-            // تطبيق تأثيرات CSS
-            if (selectedOptions.includes('shadow')) {
-                previewText.style.textShadow = '6px 6px 12px rgba(255, 255, 255, 0.4)';
-            }
-            if (selectedOptions.includes('bold')) {
-                previewText.style.fontWeight = 'bold';
-            }
-        }
-
-        // تحميل الخط
-        downloadBtn.addEventListener('click', async () => {
-            if (!processedFontBlob) {
-                alert('لم يتم معالجة الخط بعد!');
-                return;
+                if (selectedOptions.indexOf('bold') > -1) {
+                    previewText.style.fontWeight = 'bold';
+                }
             }
 
-            const effectsName = selectedOptions.join('_');
-            const newFileName = `${currentFontFile.name.replace(/\.[^/.]+$/, '')}_${effectsName}.ttf`;
-            
-            // تحميل الملف
-            const url = URL.createObjectURL(processedFontBlob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = newFileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            // ✅ تحميل الخط
+            downloadBtn.addEventListener('click', function() {
+                if (!processedFontBlob) {
+                    alert('لم يتم معالجة الخط بعد!');
+                    return;
+                }
 
-            // حفظ الخط المعالج في قاعدة البيانات
-            await saveProcessedFont(newFileName);
-        });
-
-        // حفظ الخط المعالج
-        async function saveProcessedFont(newFileName) {
-            try {
-                const formData = new FormData();
-                formData.append('processedFont', processedFontBlob, newFileName);
-                formData.append('effects', selectedOptions.join(','));
-                formData.append('timestamp', Date.now());
+                const effectsName = selectedOptions.join('_');
+                const newFileName = currentFontFile.name.replace(/\.[^/.]+$/, '') + '_' + effectsName + '.ttf';
                 
-                const response = await fetch('/save-processed', {
-                    method: 'POST',
-                    body: formData
+                // تحميل الملف
+                const url = URL.createObjectURL(processedFontBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = newFileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                console.log('✅ تم تحميل الخط:', newFileName);
+            });
+
+            // ✅ إعادة تعيين
+            function resetAll() {
+                console.log('✅ إعادة تعيين...');
+                mainBtn.style.display = 'block';
+                uploadSection.classList.remove('show');
+                optionsGrid.classList.remove('show');
+                downloadSection.classList.remove('show');
+                fileName.classList.remove('show');
+                fontFile.value = '';
+                progressFill.style.width = '0%';
+                loaderText.textContent = 'جاري معالجة الخط...';
+                
+                optionCards.forEach(function(card) {
+                    card.classList.remove('active');
                 });
                 
-                const result = await response.json();
-                console.log('✅ تم حفظ الخط المعالج:', result);
-            } catch (error) {
-                console.error('خطأ في حفظ الخط المعالج:', error);
+                currentFont = null;
+                currentFontFile = null;
+                selectedOptions = [];
+                processedFontBlob = null;
             }
-        }
 
-        // إعادة تعيين
-        function resetAll() {
-            mainBtn.classList.remove('hidden');
-            uploadSection.style.display = 'none';
-            optionsGrid.style.display = 'none';
-            downloadSection.classList.remove('active');
-            fileName.classList.add('hidden');
-            fontFile.value = '';
-            progressFill.style.width = '0%';
-            loaderText.textContent = 'جاري معالجة الخط...';
-            
-            optionCards.forEach(card => card.classList.remove('active'));
-            
-            currentFont = null;
-            currentFontFile = null;
-            selectedOptions = [];
-            processedFontBlob = null;
-        }
+            backBtn.addEventListener('click', resetAll);
+            resetBtn.addEventListener('click', resetAll);
 
-        backBtn.addEventListener('click', resetAll);
-        resetBtn.addEventListener('click', resetAll);
+            // ✅ السحب والإفلات
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function(eventName) {
+                uploadBox.addEventListener(eventName, preventDefaults, false);
+            });
 
-        // السحب والإفلات
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            uploadBox.addEventListener(eventName, preventDefaults, false);
-        });
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
 
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
+            ['dragenter', 'dragover'].forEach(function(eventName) {
+                uploadBox.addEventListener(eventName, function() {
+                    uploadBox.classList.add('dragover');
+                }, false);
+            });
 
-        ['dragenter', 'dragover'].forEach(eventName => {
-            uploadBox.addEventListener(eventName, () => {
-                uploadBox.classList.add('dragover');
+            ['dragleave', 'drop'].forEach(function(eventName) {
+                uploadBox.addEventListener(eventName, function() {
+                    uploadBox.classList.remove('dragover');
+                }, false);
+            });
+
+            uploadBox.addEventListener('drop', function(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                fontFile.files = files;
+                const event = new Event('change');
+                fontFile.dispatchEvent(event);
             }, false);
-        });
 
-        ['dragleave', 'drop'].forEach(eventName => {
-            uploadBox.addEventListener(eventName, () => {
-                uploadBox.classList.remove('dragover');
-            }, false);
+            console.log('🚀 الموقع جاهز للاستخدام!');
         });
-
-        uploadBox.addEventListener('drop', function(e) {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            fontFile.files = files;
-            handleFileUpload({target: {files: files}});
-        }, false);
     </script>
 </body>
 </html>
